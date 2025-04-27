@@ -19,7 +19,7 @@ Este proyecto demuestra cómo construir un agente que puede decidir dinámicamen
 - 📊 **Consulta de datos en tiempo real** para empresas que cotizan en bolsa
 - 🧮 **Cálculos financieros avanzados** (ROI, VAN, TIR, ratios, préstamos, etc.)
 - 💻 **Interfaz de consola** fácil de usar
-- 🌐 **Interfaz web** basada en Streamlit (opcional)
+- 🌐 **Interfaz web** basada en Streamlit
 
 ## Requisitos
 
