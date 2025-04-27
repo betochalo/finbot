@@ -31,7 +31,7 @@ Este proyecto demuestra cómo construir un agente que puede decidir dinámicamen
 
 1. Clonar el repositorio:
    ```bash
-   git clone https://github.com/yourusername/finbot.git
+   git clone https://github.com/betochalo/finbot.git
    cd finbot
    ```
 
