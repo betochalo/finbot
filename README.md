@@ -48,11 +48,11 @@ Este proyecto demuestra cómo construir un agente que puede decidir dinámicamen
 
 4. Crear un archivo `.env` con las variables de entorno necesarias:
    ```
-   # LLM Provider (OpenAI o Anthropic)
+   # LLM Provider OpenAI
    LLM_PROVIDER=openai
    OPENAI_API_KEY=tu_clave_api_aqui
    
-   # Configuración
+   # Configuración LLM
    MODEL_PROVIDER=gpt-4
    
    
