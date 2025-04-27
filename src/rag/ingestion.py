@@ -14,16 +14,18 @@ from langchain_core.documents import Document
 
 def get_document_count(directory: str) -> int:
     """
-    Count documents in Chroma vectorstore
+    Count documents in Chroma vectorstore.
+    
     Args:
-        directory: Path to the vectorstore
+        directory: Path to the vectorstore.
+    
     Returns:
-        int: Number of documents in the vectorstore
+        int: Number of documents in the vectorstore.
     """
     try:
         chroma_files = glob.glob(os.path.join(directory, "*.parquet"))
-        return len(chroma_files) > 0
-    except Exception:
+        return len(chroma_files)
+    except (OSError, IOError):
         return 0
 
 def load_documents(directory: Optional[str] = None) -> List[Document]:
@@ -38,12 +40,12 @@ def load_documents(directory: Optional[str] = None) -> List[Document]:
     if directory is None:
         base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         directory = os.path.join(base_dir, "data", "documents")
-    
+
     documents = []
     if not os.path.exists(directory):
         os.makedirs(directory, exist_ok=True)
         create_sample_documents(directory)
-    
+
     for file_path in glob.glob(os.path.join(directory, "**/*.*"), recursive=True):
         try:
             ext = os.path.splitext(file_path)[1].lower()
@@ -60,8 +62,8 @@ def load_documents(directory: Optional[str] = None) -> List[Document]:
             elif ext in [".docx", ".doc"]:
                 loader = Docx2txtLoader(file_path)
                 documents.extend(loader.load())
-        
-        except Exception as e:
+
+        except (OSError, ValueError, IOError) as e:
             print(f"Error al cargar {file_path}: {str(e)}")
 
     if documents:
@@ -118,7 +120,6 @@ def create_sample_documents(directory: str) -> None:
     Interpretación: Mide la capacidad de la empresa para pagar los intereses de su deuda con los beneficios operativos.
     """
 
-        
     market_content = """# Conceptos Básicos del Mercado de Valores
 
     ## ¿Qué es una acción?
@@ -152,7 +153,7 @@ def create_sample_documents(directory: str) -> None:
     Enfocada en la obtención de ingresos recurrentes a través de dividendos.
     """
 
-        
+
     statements_content = """# Estados Financieros Básicos
 
     Los estados financieros proporcionan información esencial sobre la situación financiera y el rendimiento de una empresa.
@@ -200,11 +201,11 @@ def create_sample_documents(directory: str) -> None:
 
     with open(os.path.join(directory, "ratios_financieros.txt"), "w", encoding="utf-8") as f:
         f.write(ratios_content)
-    
+
     with open(os.path.join(directory, "mercado_valores.txt"), "w", encoding="utf-8") as f:
         f.write(market_content)
-    
+
     with open(os.path.join(directory, "estados_financieros.txt"), "w", encoding="utf-8") as f:
         f.write(statements_content)
-    
+
     print(f"Documentos de ejemplo creados en {directory}")

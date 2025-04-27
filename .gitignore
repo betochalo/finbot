@@ -1,3 +1,5 @@
 envfinbot
 .env
 __pycache__
+data
+src/data

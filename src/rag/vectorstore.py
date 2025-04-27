@@ -1,16 +1,22 @@
 """Functions for the vectorstore"""
 import os
-
-from src.settings.config import settings
+from typing import Optional
 
 from langchain_community.vectorstores import Chroma
 from langchain_core.embeddings import Embeddings
 from langchain_core.vectorstores import VectorStore
+from langchain_core.tools import Tool
+from langchain_core.retrievers import BaseRetriever
+from langchain.chains.retrieval import create_retrieval_chain
+from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_openai import OpenAIEmbeddings
+from langchain_core.prompts import PromptTemplate
+from langchain_core.language_models import BaseLanguageModel
 
-from src.rag.ingestion import get_document_count
-
+from src.settings.config import settings
+from src.agent.prompts import RAG_PROMPT_TEMPLATE
+from src.rag.ingestion import load_documents, get_document_count
 
 def get_embeddings() -> Embeddings:
     """
@@ -18,12 +24,15 @@ def get_embeddings() -> Embeddings:
     """
     if settings.EMBEDDINGS_PROVIDER == "local":
         model_name = settings.SENTENCE_TRANSFORMER_MODEL
-        return HuggingFaceEmbeddings(model_name=model_name)
-    else:
-        return OpenAIEmbeddings(
-            model=settings.OPENAI_EMBEDDINGS_MODEL
-        )
-    
+        model_kwargs = {'device': 'cpu'}
+        return HuggingFaceEmbeddings(
+            model_name=model_name,
+            model_kwargs=model_kwargs
+            )
+    return OpenAIEmbeddings(
+        model=settings.OPENAI_EMBEDDINGS_MODEL
+    )
+
 def get_vectorstore() -> VectorStore:
     """
     Initialize and loader the vectorstore
@@ -46,13 +55,13 @@ def get_vectorstore() -> VectorStore:
             persist_directory=vectorstore_path,
             embedding_function=embeddings
         )
-    
-    from src.rag.ingestion import load_documents
+
+
     documents = load_documents()
 
     if not documents:
         raise ValueError("No se encontraron documentos para cargar en la base vectorial")
-    
+
     vectorstore = Chroma.from_documents(
         documents=documents,
         embedding=embeddings,
@@ -61,6 +70,70 @@ def get_vectorstore() -> VectorStore:
     vectorstore.persist()
     return vectorstore
 
+def create_rag_tool(
+        vectorstore: VectorStore,
+        llm: Optional[BaseLanguageModel] = None
+) -> Tool:
+    """
+    Create a tool to query the RAG database.
+    Args:
+        vectorstore: Vector database for queries
+        lm: Optional language model
+    Returns:
+        Tool: RAG Question Tool
+    """
+    retriever = vectorstore.as_retriever(
+        search_type="similarity",
+        search_kwargs={"k": 5}
+    )
 
+    prompt = PromptTemplate(
+        template=RAG_PROMPT_TEMPLATE,
+        input_variables=["question", "context"]
+    )
 
+    if llm:
+        question_answer_chain = create_stuff_documents_chain(llm, prompt)
+        chain = create_retrieval_chain(retriever, question_answer_chain)
+        return Tool(
+            name="financial_knowledge_base",
+            description=(
+                "Útil para responder preguntas sobre conceptos financieros, "
+                "definiciones, principios de inversión, fundamentos del mercado, "
+                "de valore y conocimiento financiero general. Usa esta herramienta "
+                " cuando necesites información general o explicaciones conceptuales."
+            ),
+            func=chain.invoke
+        )
 
+    return Tool(
+        name="financial_knowledge_base",
+        description=(
+            "Útil para responder preguntas sobre conceptos financieros, "
+            "definiciones, principios de inversión, fundamentos del mercado, "
+            "de valore y conocimiento financiero general. Usa esta herramienta "
+            " cuando necesites información general o explicaciones conceptuales."
+        ),
+        func=lambda query: retrieve_and_format(retriever, query)
+    )
+
+def retrieve_and_format(retriever: BaseRetriever, query: str) -> str:
+    """
+    Retrieves relevant documents and formats them for use.
+
+    Args:
+        retriever: Document retriever
+        query: Query to retrieve documents
+
+    Returns:
+        str: Documents formatted as context
+    """
+    docs = retriever.get_relevant_documents(query)
+
+    if not docs:
+        return "No se encontró información relevante en la base de conocimiento."
+
+    context = "\n\n".join([
+        f"Document {i+1}:\n{doc.page_content}" for i, doc in enumerate(docs)
+    ])
+    return context
